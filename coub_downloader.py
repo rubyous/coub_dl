@@ -28,7 +28,7 @@ def slugify(value, allow_unicode=False):
     return re.sub(r'[-\s]+', '-', value).strip('-_')
 
 
-def main_id(coub_id=None, subdir=None):
+def main_id(coub_id=None, subdir=None, no_loop=False):
     if coub_id is None:
         raise ValueError('main_id did not get a coub id')
     print(f"Coub ID: {coub_id}")
@@ -78,7 +78,7 @@ def main_id(coub_id=None, subdir=None):
         audio_duration = None
 
     # merge audio and video
-    video_clip = merge_audio_video(temp_video_name, temp_audio_name, audio_duration)
+    video_clip = merge_audio_video(temp_video_name, temp_audio_name, audio_duration, no_loop)
     if subdir is not None:
         video_clip.write_videofile(subdir + os.sep + video_name)
     else:
@@ -98,7 +98,7 @@ def simple_id(coub_id):
     # <a class="sb -st -rn coub__download" href="https://coub-anubis-a.akamaized.net/coub_storage/coub/simple/cw_video_for_sharing/3224468e86a/c0d7b2ba8f5956db9bb25/1647569180_looped_1647569179.mp4?dl=1" download="" data-permalink="318vkk">  <i><svg width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M7 19a1 1 0 100 2h10a1 1 0 100-2H7zm-.707-8.207a1 1 0 011.414 0L11 14.086V4a1 1 0 112 0v10.086l3.293-3.293a1 1 0 111.414 1.414l-5 5a1 1 0 01-1.414 0l-5-5a1 1 0 010-1.414z" fill="#999"></path></svg></i> <span>Download</span> </a>
     pass
 
-def main_txt(filepath=None):
+def main_txt(filepath=None, no_loop=False):
     if filepath is None:
         raise ValueError("main_txt did not get a filepath :(")
     # create subdir
@@ -114,7 +114,7 @@ def main_txt(filepath=None):
         print(f"Starting {line}")
         coub_id = extract_id(line)
         try:
-            main_id(coub_id, filename)
+            main_id(coub_id, filename, no_loop)
             success_counter += 1
         except (ConnectionError, KeyError) as e:
             print(e)
@@ -147,13 +147,13 @@ def get_highest_from_dict(url_dict):
     raise ValueError("Found no quality")
 
 
-def merge_audio_video(videofile, audiofile, audio_duration=None):
+def merge_audio_video(videofile, audiofile, audio_duration=None, no_loop=False):
     """needs videofile(path) and audiofile(path), returns mpe.VideoFileClip"""
     video = mpe.VideoFileClip(videofile)
     if audiofile is not None:
         audio = mpe.AudioFileClip(audiofile)
         video = video.set_audio(audio)
-        if audio_duration is None:
+        if audio_duration is None and not no_loop:
             print(f"Looping... audio_duration = {audio.duration}")
             # https://zulko.github.io/moviepy/getting_started/effects.html?highlight=loop
             video = video.fx(mpv.loop, duration=audio.duration)
@@ -163,6 +163,7 @@ def merge_audio_video(videofile, audiofile, audio_duration=None):
 
 
 if __name__ == '__main__':
+    # TODO: identify mode by parameter, remove --id, --file
     parser = argparse.ArgumentParser(description='Coub downloader. RIP 2022-04-01',
                                      formatter_class=argparse.RawDescriptionHelpFormatter,
                                      epilog=textwrap.dedent("""examples:
@@ -171,13 +172,14 @@ if __name__ == '__main__':
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument('--id', help='Coub id')
     mode.add_argument('--file', help='TXT-File with coub links or IDs')
+    parser.add_argument('--no-loop', required=False, action='store_true')
 
     args = vars(parser.parse_args())
 
     if args['id'] is not None:
         main_id(args['id'])
     elif args['file'] is not None:
-        main_txt(args['file'])
+        main_txt(args['file'], args['no-loop'])
     else:
         raise ValueError("Please report to dev")
 
