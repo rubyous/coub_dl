@@ -172,9 +172,11 @@ if __name__ == '__main__':
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument('--id', help='Coub id')
     mode.add_argument('--file', help='TXT-File with coub links or IDs')
-    parser.add_argument('--no-loop', required=False, action='store_true')
+    parser.add_argument('--no-loop', required=False, action='store_true', default=False)
 
     args = vars(parser.parse_args())
+    if not 'no-loop' in args.keys():
+        args['no-loop'] = False
 
     if args['id'] is not None:
         main_id(args['id'])
